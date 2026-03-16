@@ -22,7 +22,7 @@ A sleek, web-based remote control for Samsung Smart TVs. Control your TV directl
 
 <div align="center">
 
-https://github.com/MAliffadlan/Tizen-QR-Remote-Samsung/raw/main/video.mp4
+https://github.com/user-attachments/assets/a65dd7c9-8c33-4564-8800-4e48b0f75198
 
 <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 
