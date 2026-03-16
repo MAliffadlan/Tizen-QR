@@ -1,4 +1,4 @@
-# 📺 Samsung Smart TV Web Remote
+# 📺 Smart TV Web Remote
 
 A sleek, web-based remote control for Samsung Smart TVs. Control your TV directly from your phone or any browser on your local network — no app install needed. Just scan the QR code and you're in!
 
