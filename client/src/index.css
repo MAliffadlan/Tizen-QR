@@ -1,0 +1,524 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --remote-bg: #1a1a1f;
+  --remote-body: #222228;
+  --remote-surface: #2a2a30;
+  --remote-edge: #3a3a42;
+  --accent-blue: #60a5fa;
+  --accent-red: #f87171;
+  --accent-green: #4ade80;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --glow-blue: rgba(96, 165, 250, 0.2);
+  --glow-red: rgba(248, 113, 113, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #111115;
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== REMOTE BODY ===== */
+.remote-body {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(ellipse at 50% 30%, #1e1e24 0%, #111115 70%);
+  overflow: hidden;
+}
+
+.remote-shell {
+  position: relative;
+  width: 340px;
+  max-height: 95vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: linear-gradient(165deg, #2c2c34 0%, #222228 30%, #1c1c22 100%);
+  border-radius: 40px;
+  padding: 32px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 25px 60px -10px rgba(0,0,0,0.7),
+    0 15px 35px -5px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.remote-shell::-webkit-scrollbar {
+  display: none;
+}
+
+/* Subtle inner edge highlight */
+.remote-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 40px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 30%);
+}
+
+/* ===== TOP SECTION ===== */
+.top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+  margin-bottom: 28px;
+}
+
+.brand-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  text-align: center;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green), 0 0 20px rgba(34, 197, 94, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.status-dot.disconnected {
+  background: var(--accent-red);
+  box-shadow: 0 0 8px var(--accent-red), 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+/* ===== POWER & TOP BUTTONS ===== */
+.top-controls {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  margin-bottom: 24px;
+}
+
+/* ===== BUTTON BASE ===== */
+.btn-remote {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #35353d, #28282f);
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
+  outline: none;
+}
+
+.btn-remote:active {
+  transform: scale(0.92);
+  background: #222228;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.btn-round {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  box-shadow:
+    3px 3px 8px rgba(0,0,0,0.4),
+    -2px -2px 6px rgba(80,80,90,0.2);
+}
+
+.btn-pill {
+  height: 48px;
+  border-radius: 16px;
+  padding: 0 16px;
+  box-shadow:
+    3px 3px 8px rgba(0,0,0,0.4),
+    -2px -2px 6px rgba(80,80,90,0.2);
+}
+
+.btn-power {
+  background: linear-gradient(145deg, #3a2025, #2a1518);
+  border-color: rgba(248, 113, 113, 0.25);
+  color: var(--accent-red);
+}
+
+.btn-power:active {
+  box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+/* ===== VOLUME / CHANNEL ROCKERS ===== */
+.rocker-section {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  margin-top: 24px;
+}
+
+.rocker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 56px;
+  height: 160px;
+  background: linear-gradient(180deg, #30303a 0%, #26262e 100%);
+  border-radius: 28px;
+  padding: 8px 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow:
+    4px 4px 10px rgba(0,0,0,0.4),
+    -2px -2px 6px rgba(80,80,90,0.15);
+}
+
+.rocker button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  color: var(--text-secondary);
+  transition: all 0.12s ease;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rocker button:active {
+  transform: scale(0.8);
+  color: var(--text-primary);
+}
+
+.rocker-label {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.center-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-mute {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* ===== D-PAD ===== */
+.dpad-container {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dpad-ring {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #30303a, #24242c);
+  box-shadow:
+    8px 8px 20px rgba(0,0,0,0.5),
+    -4px -4px 12px rgba(80,80,90,0.15),
+    inset 0 0 0 1px rgba(255,255,255,0.07);
+}
+
+.dpad-btn {
+  position: absolute;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  color: var(--text-secondary);
+  transition: all 0.12s ease;
+  outline: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dpad-btn:active {
+  color: var(--text-primary);
+  transform: scale(0.85);
+}
+
+.dpad-btn.up { top: 12px; left: 50%; transform: translateX(-50%); }
+.dpad-btn.down { bottom: 12px; left: 50%; transform: translateX(-50%); }
+.dpad-btn.left { left: 12px; top: 50%; transform: translateY(-50%); }
+.dpad-btn.right { right: 12px; top: 50%; transform: translateY(-50%); }
+
+.dpad-btn.up:active { transform: translateX(-50%) scale(0.85); }
+.dpad-btn.down:active { transform: translateX(-50%) scale(0.85); }
+.dpad-btn.left:active { transform: translateY(-50%) scale(0.85); }
+.dpad-btn.right:active { transform: translateY(-50%) scale(0.85); }
+
+.dpad-ok {
+  position: relative;
+  z-index: 3;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #38383f, #2a2a32);
+  border: 2px solid rgba(255,255,255,0.12);
+  box-shadow:
+    4px 4px 10px rgba(0,0,0,0.4),
+    -2px -2px 6px rgba(80,80,90,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  transition: all 0.15s ease;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dpad-ok:active {
+  transform: scale(0.9);
+  background: #222228;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ===== NAV BUTTONS ===== */
+.nav-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 24px;
+  padding: 0 16px;
+}
+
+.btn-nav {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* ===== COLOR DOTS ===== */
+.color-dots {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.color-dot:active {
+  transform: scale(0.8);
+}
+
+.color-dot.red { background: #ef4444; }
+.color-dot.green { background: #22c55e; }
+.color-dot.yellow { background: #eab308; }
+.color-dot.blue { background: #3b82f6; }
+
+/* ===== NUMBER PAD ===== */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 0 28px;
+  margin-top: 24px;
+}
+
+.btn-num {
+  height: 48px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+/* ===== APP SHORTCUTS ===== */
+.app-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 16px;
+  margin-top: 24px;
+}
+
+.btn-app {
+  height: 44px;
+  border-radius: 14px;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.btn-netflix {
+  background: linear-gradient(145deg, #3a2025, #2a1518) !important;
+  border-color: rgba(229, 9, 20, 0.3) !important;
+  color: #ff3040 !important;
+}
+
+.btn-youtube {
+  background: linear-gradient(145deg, #3a2025, #2a1518) !important;
+  border-color: rgba(255, 0, 0, 0.2) !important;
+  color: #ff5555 !important;
+}
+
+/* ===== MEDIA CONTROLS ===== */
+.media-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px;
+  margin-top: 20px;
+}
+
+.btn-media {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* ===== FOOTER ===== */
+.remote-footer {
+  margin-top: 28px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* ===== AMBIENT GLOW ===== */
+.ambient-glow {
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-1 {
+  top: -100px;
+  left: -50px;
+  background: var(--accent-blue);
+}
+
+.glow-2 {
+  bottom: -100px;
+  right: -50px;
+  background: #8b5cf6;
+}
+
+/* ===== SECTION DIVIDER ===== */
+.divider {
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  margin: 24px 0;
+}
+
+/* ===== SCROLLBAR ===== */
+.remote-shell::-webkit-scrollbar {
+  width: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 380px) {
+  .remote-shell {
+    width: 100vw;
+    border-radius: 0;
+    max-height: 100vh;
+    padding: 24px 14px 32px;
+  }
+}
+
+/* ===== RIPPLE EFFECT ===== */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.4; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+.btn-remote::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transform: scale(0);
+  opacity: 0;
+}
+
+.btn-remote:active::after {
+  animation: ripple 0.4s ease-out;
+}
+
+/* Samsung Logo IR Sensor */
+.ir-sensor {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #35353d, transparent);
+  margin-bottom: 8px;
+}
