@@ -18,17 +18,27 @@ A sleek, web-based remote control for Samsung Smart TVs. Control your TV directl
 - 🎨 **Premium Dark UI** — Neumorphic design with smooth Framer Motion animations
 - 🔄 **Auto-Reconnect** — Automatically reconnects if the TV connection drops
 
-## 🖼️ UI Preview
+## 🎬 Demo
 
-The interface is designed to look and feel like a real Samsung remote:
+<div align="center">
 
-- **Top Section** — Power, Source, Mic, Settings
-- **Number Pad** — 0-9 keys with Previous Channel and TTX
-- **Volume & Channel Rockers** — With Home, Mute, and Back in the center
-- **D-Pad** — Directional navigation with OK button
-- **Color Dots** — Red, Green, Yellow, Blue function keys
-- **Media Controls** — Play, Pause, Rewind, Fast Forward
-- **App Shortcuts** — Quick launch Netflix & YouTube
+https://github.com/MAliffadlan/Tizen-QR-Remote-Samsung/raw/main/video.mp4
+
+<p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
+
+</div>
+
+## 🖼️ UI Highlights
+
+| Section | Description |
+|---------|-------------|
+| 🔴 **Top Controls** | Power, Source, Mic, Settings |
+| 🔢 **Number Pad** | 0-9, Previous Channel, TTX |
+| 🔊 **Rockers** | Volume & Channel with Home, Mute, Back |
+| 🕹️ **D-Pad** | Directional navigation + OK |
+| 🟢🟡🔵🔴 **Color Dots** | Red, Green, Yellow, Blue function keys |
+| ⏯️ **Media** | Play, Pause, Rewind, Fast Forward |
+| 📺 **App Shortcuts** | Netflix & YouTube quick launch |
 
 ## 🛠️ Tech Stack
 
