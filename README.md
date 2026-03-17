@@ -6,7 +6,7 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
 <div align="center">
-  <video src="assets/video.mp4" width="800" controls="controls" muted="muted"></video>
+  <video src="https://github.com/MAliffadlan/Tizen-QR-Remote-Samsung/raw/main/assets/video.mp4" width="800" controls="controls" muted="muted"></video>
   <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 </div>
 
