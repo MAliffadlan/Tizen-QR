@@ -29,17 +29,35 @@ const RemoteButton: React.FC<{
 );
 
 const RemoteApp: React.FC = () => {
-  const [status, setStatus] = useState<'connected' | 'disconnected'>('disconnected');
+  const [status, setStatus] = useState<'connected' | 'disconnected' | 'scanning' | 'error'>('disconnected');
+  const [statusMsg, setStatusMsg] = useState('Sedang menyambungkan...');
 
   useEffect(() => {
     const serverUrl = `http://${window.location.hostname}:3001`;
     socket = io(serverUrl);
 
-    socket.on('connect', () => setStatus('connected'));
-    socket.on('disconnect', () => setStatus('disconnected'));
+    socket.on('connect', () => {
+      setStatus('scanning');
+      setStatusMsg('Terhubung ke Server Bridge');
+    });
+    
+    socket.on('disconnect', () => {
+      setStatus('disconnected');
+      setStatusMsg('Server Bridge Terputus');
+    });
+    
     socket.on('tv-status', (msg: string) => {
-      if (msg.toLowerCase().includes('online') || msg.toLowerCase().includes('connected')) {
+      setStatusMsg(msg);
+      
+      const lowerMsg = msg.toLowerCase();
+      if (lowerMsg.includes('terhubung ke') || lowerMsg.includes('siap dor')) {
         setStatus('connected');
+      } else if (lowerMsg.includes('melacak') || lowerMsg.includes('menghubungkan')) {
+        setStatus('scanning');
+      } else if (lowerMsg.includes('terputus') || lowerMsg.includes('gagal')) {
+        setStatus('error');
+      } else {
+        setStatus('disconnected');
       }
     });
 
@@ -68,11 +86,20 @@ const RemoteApp: React.FC = () => {
 
         {/* Top Bar */}
         <div className="top-bar">
-          <div className={`status-dot ${status === 'disconnected' ? 'disconnected' : ''}`} />
-          <span className="brand-name">SAMSUNG</span>
-          <RemoteButton onClick={() => sendKey('KEY_MENU')} className="btn-round" style={{ width: 36, height: 36 }}>
-            <Settings size={14} />
-          </RemoteButton>
+          <div className="status-container">
+            <div className={`status-dot ${status}`} />
+            <span className="status-text">{statusMsg}</span>
+          </div>
+          <div className="top-right-actions">
+            <RemoteButton onClick={() => socket.emit('force-scan')} className="btn-round" style={{ width: 36, height: 36, marginRight: 8 }}>
+              <motion.div whileTap={{ rotate: 180 }} transition={{ duration: 0.3 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              </motion.div>
+            </RemoteButton>
+            <RemoteButton onClick={() => sendKey('KEY_MENU')} className="btn-round" style={{ width: 36, height: 36 }}>
+              <Settings size={14} />
+            </RemoteButton>
+          </div>
         </div>
 
         {/* Power, Source, Mic Row */}
