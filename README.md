@@ -7,7 +7,11 @@
 
 <div align="center">
 
-https://github.com/user-attachments/assets/58953186-d243-4aae-831d-b633bf9e2cff
+
+
+https://github.com/user-attachments/assets/5bb51042-7140-4303-8093-5b3715b9bf02
+
+
 
 <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 </div>
