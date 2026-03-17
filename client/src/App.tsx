@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { motion, type TargetAndTransition } from 'framer-motion';
+import { motion, AnimatePresence, type TargetAndTransition } from 'framer-motion';
 import {
   Power, VolumeX, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, Home, ArrowLeft, Settings,
   Tv, Mic, Play, Pause,
-  LayoutGrid, Youtube, FastForward, Rewind
+  LayoutGrid, Youtube, FastForward, Rewind, Keyboard, Mouse
 } from 'lucide-react';
 
 let socket: Socket;
@@ -31,6 +31,13 @@ const RemoteButton: React.FC<{
 const RemoteApp: React.FC = () => {
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'scanning' | 'error'>('disconnected');
   const [statusMsg, setStatusMsg] = useState('Sedang menyambungkan...');
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [textInput, setTextInput] = useState('');
+  const [inputMode, setInputMode] = useState<'instant' | 'bulk'>('instant');
+  const [showTouchpad, setShowTouchpad] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
 
   useEffect(() => {
     const serverUrl = `http://${window.location.hostname}:3001`;
@@ -40,15 +47,15 @@ const RemoteApp: React.FC = () => {
       setStatus('scanning');
       setStatusMsg('Terhubung ke Server Bridge');
     });
-    
+
     socket.on('disconnect', () => {
       setStatus('disconnected');
       setStatusMsg('Server Bridge Terputus');
     });
-    
+
     socket.on('tv-status', (msg: string) => {
       setStatusMsg(msg);
-      
+
       const lowerMsg = msg.toLowerCase();
       if (lowerMsg.includes('terhubung ke') || lowerMsg.includes('siap dor')) {
         setStatus('connected');
@@ -67,6 +74,96 @@ const RemoteApp: React.FC = () => {
   const sendKey = useCallback((key: string) => {
     if (navigator.vibrate) navigator.vibrate(30);
     socket.emit('send-key', key);
+  }, []);
+
+  const handleSendText = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputMode === 'bulk' && textInput.trim()) {
+      if (navigator.vibrate) navigator.vibrate(50);
+      socket.emit('send-text', textInput);
+      setTextInput('');
+      setShowKeyboard(false);
+    }
+  }, [textInput, inputMode]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    const oldValue = textInput;
+    
+    if (inputMode === 'instant') {
+      if (newValue.length > oldValue.length) {
+        // Huruf baru ditambahkan
+        const newChar = newValue.slice(oldValue.length);
+        if (navigator.vibrate) navigator.vibrate(15);
+        socket.emit('send-text', newChar);
+      } else if (newValue.length < oldValue.length) {
+        // Backspace
+        if (navigator.vibrate) navigator.vibrate(15);
+        socket.emit('send-key', 'KEY_BACKSPACE');
+      }
+    }
+    
+    setTextInput(newValue);
+  }, [textInput, inputMode]);
+
+  const openKeyboard = useCallback(() => {
+    setShowKeyboard(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  // Touchpad handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      movedRef.current = false;
+    } else if (e.touches.length === 2) {
+      // Two-finger scroll start
+      const touch = e.touches[0];
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (!lastTouchRef.current) return;
+
+    if (e.touches.length === 1) {
+      // One finger: Move Pointer
+      const touch = e.touches[0];
+      const dx = (touch.clientX - lastTouchRef.current.x) * 2.5; // Slightly faster pointer
+      const dy = (touch.clientY - lastTouchRef.current.y) * 2.5;
+      
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        movedRef.current = true;
+        socket.emit('mouse-move', { dx, dy });
+      }
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      
+    } else if (e.touches.length === 2) {
+      // Two fingers: Scroll Page (Using CHUP/CHDOWN for browser scrolling)
+      const touch = e.touches[0];
+      const dy = touch.clientY - lastTouchRef.current.y;
+      
+      // Threshold to trigger page up/down to prevent spamming
+      if (Math.abs(dy) > 35) { 
+        if (dy > 0) {
+          socket.emit('send-key', 'KEY_CHDOWN'); // Swipe down -> Page Down
+        } else {
+          socket.emit('send-key', 'KEY_CHUP');   // Swipe up -> Page Up
+        }
+        if (navigator.vibrate) navigator.vibrate(10);
+        lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!movedRef.current) {
+      if (navigator.vibrate) navigator.vibrate(20);
+      socket.emit('mouse-click');
+    }
+    lastTouchRef.current = null;
   }, []);
 
   return (
@@ -93,7 +190,7 @@ const RemoteApp: React.FC = () => {
           <div className="top-right-actions">
             <RemoteButton onClick={() => socket.emit('force-scan')} className="btn-round" style={{ width: 36, height: 36, marginRight: 8 }}>
               <motion.div whileTap={{ rotate: 180 }} transition={{ duration: 0.3 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
               </motion.div>
             </RemoteButton>
             <RemoteButton onClick={() => sendKey('KEY_MENU')} className="btn-round" style={{ width: 36, height: 36 }}>
@@ -223,11 +320,14 @@ const RemoteApp: React.FC = () => {
           <RemoteButton onClick={() => sendKey('KEY_GUIDE')} className="btn-round btn-nav">
             <LayoutGrid size={18} />
           </RemoteButton>
+          <RemoteButton onClick={openKeyboard} className="btn-round btn-nav btn-keyboard">
+            <Keyboard size={18} />
+          </RemoteButton>
+          <RemoteButton onClick={() => setShowTouchpad(true)} className="btn-round btn-nav btn-mouse">
+            <Mouse size={18} />
+          </RemoteButton>
           <RemoteButton onClick={() => sendKey('KEY_INFO')} className="btn-round btn-nav" style={{ fontSize: 10, fontWeight: 700, color: '#71717a' }}>
             INFO
-          </RemoteButton>
-          <RemoteButton onClick={() => sendKey('KEY_TOOLS')} className="btn-round btn-nav" style={{ fontSize: 10, fontWeight: 700, color: '#71717a' }}>
-            TOOL
           </RemoteButton>
         </div>
 
@@ -266,6 +366,114 @@ const RemoteApp: React.FC = () => {
           Boss Alif Remote
         </div>
       </motion.div>
+
+      {/* Touchpad Overlay */}
+      <AnimatePresence>
+        {showTouchpad && (
+          <motion.div
+            className="touchpad-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="touchpad-header">
+              <span className="touchpad-label">🖱️ Touchpad Mode</span>
+              <button className="touchpad-close" onClick={() => setShowTouchpad(false)}>✕</button>
+            </div>
+            <div
+              className="touchpad-area"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="touchpad-hint">
+                <p>👆 <strong>Geser 1 jari:</strong> Pindah Pointer</p>
+                <p>🖱️ <strong>Tap layarnya:</strong> Klik</p>
+              </div>
+            </div>
+            <div className="touchpad-buttons">
+              <button className="touchpad-btn" onClick={() => { if (navigator.vibrate) navigator.vibrate(20); socket.emit('mouse-click'); }}>
+                Klik Kiri
+              </button>
+              <button className="touchpad-btn" onClick={() => sendKey('KEY_RETURN')}>
+                Kembali
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard Modal */}
+      <AnimatePresence>
+        {showKeyboard && (
+          <motion.div
+            className="keyboard-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => { setShowKeyboard(false); setTextInput(''); }}
+          >
+            <motion.form
+              className="keyboard-modal"
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleSendText}
+            >
+              <div className="keyboard-header">
+                <span className="keyboard-label">Ketik untuk TV ⌨️</span>
+                <div className="keyboard-mode-toggle">
+                  <button 
+                    type="button" 
+                    className={`mode-btn ${inputMode === 'instant' ? 'active' : ''}`}
+                    onClick={() => setInputMode('instant')}
+                  >
+                    YouTube
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`mode-btn ${inputMode === 'bulk' ? 'active' : ''}`}
+                    onClick={() => setInputMode('bulk')}
+                  >
+                    Browser
+                  </button>
+                </div>
+              </div>
+              <p className="keyboard-hint">
+                {inputMode === 'instant' 
+                  ? 'Setiap huruf langsung terkirim ke TV' 
+                  : 'Ketik semua lalu tekan Kirim'}
+              </p>
+              <input
+                ref={inputRef}
+                type="text"
+                className="keyboard-input"
+                placeholder={inputMode === 'instant' ? 'Mulai ketik...' : 'Cari YouTube, Netflix...'}
+                value={textInput}
+                onChange={handleInputChange}
+                autoComplete="off"
+                autoCorrect="off"
+              />
+              {inputMode === 'bulk' && (
+                <button type="submit" className="keyboard-send-btn">
+                  Kirim ke TV
+                </button>
+              )}
+              {inputMode === 'instant' && (
+                <button 
+                  type="button" 
+                  className="keyboard-send-btn"
+                  onClick={() => { setTextInput(''); setShowKeyboard(false); }}
+                >
+                  Selesai
+                </button>
+              )}
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

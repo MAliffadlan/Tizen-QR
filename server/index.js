@@ -208,6 +208,58 @@ function doSendKey(key) {
     tvWs.send(JSON.stringify(payload));
 }
 
+function sendText(text) {
+    if (!tvWs || tvWs.readyState !== WebSocket.OPEN) {
+        console.log('Koneksi belum siap untuk kirim teks.');
+        return;
+    }
+
+    console.log(`Mengetik ke TV: "${text}"`);
+
+    const encodedText = Buffer.from(text).toString('base64');
+    const payload = {
+        method: 'ms.remote.control',
+        params: {
+            Cmd: encodedText,
+            DataOfCmd: 'base64',
+            TypeOfRemote: 'SendInputString'
+        }
+    };
+    tvWs.send(JSON.stringify(payload));
+}
+
+function sendMouseMove(dx, dy) {
+    if (!tvWs || tvWs.readyState !== WebSocket.OPEN) return;
+
+    const payload = {
+        method: 'ms.remote.control',
+        params: {
+            Cmd: 'Move',
+            Position: {
+                x: Math.round(dx),
+                y: Math.round(dy),
+                Time: String(Date.now())
+            },
+            TypeOfRemote: 'ProcessMouseDevice'
+        }
+    };
+    tvWs.send(JSON.stringify(payload));
+}
+
+function sendMouseClick() {
+    if (!tvWs || tvWs.readyState !== WebSocket.OPEN) return;
+
+    const payload = {
+        method: 'ms.remote.control',
+        params: {
+            Cmd: 'LeftClick',
+            TypeOfRemote: 'ProcessMouseDevice'
+        }
+    };
+    console.log('Mouse: LeftClick');
+    tvWs.send(JSON.stringify(payload));
+}
+
 async function scanAndConnect() {
     const hasConfig = loadTvConfig();
     
@@ -235,6 +287,9 @@ io.on('connection', (socket) => {
     }
     
     socket.on('send-key', (key) => sendKey(key));
+    socket.on('send-text', (text) => sendText(text));
+    socket.on('mouse-move', (data) => sendMouseMove(data.dx, data.dy));
+    socket.on('mouse-click', () => sendMouseClick());
     socket.on('force-scan', async () => {
         console.log('Menerima perintah force-scan dari HP');
         const found = await scanForTv();

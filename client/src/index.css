@@ -59,10 +59,10 @@ body {
   align-items: center;
   gap: 0;
   box-shadow:
-    0 0 0 1px rgba(255,255,255,0.08),
-    0 25px 60px -10px rgba(0,0,0,0.7),
-    0 15px 35px -5px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 25px 60px -10px rgba(0, 0, 0, 0.7),
+    0 15px 35px -5px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .remote-shell::-webkit-scrollbar {
@@ -76,7 +76,7 @@ body {
   inset: 0;
   border-radius: 40px;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 30%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%);
 }
 
 /* ===== TOP SECTION ===== */
@@ -93,10 +93,10 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
   padding: 6px 12px 6px 8px;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .status-text {
@@ -139,20 +139,30 @@ body {
 }
 
 .status-dot.scanning {
-  background: #eab308; /* yellow */
+  background: #eab308;
+  /* yellow */
   box-shadow: 0 0 8px #eab308, 0 0 20px rgba(234, 179, 8, 0.4);
   animation: pulse-glow 1.5s ease-in-out infinite;
 }
 
-.status-dot.error, 
+.status-dot.error,
 .status-dot.disconnected {
   background: var(--accent-red);
   box-shadow: 0 0 8px var(--accent-red), 0 0 20px rgba(239, 68, 68, 0.4);
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
 }
 
 /* ===== POWER & TOP BUTTONS ===== */
@@ -172,7 +182,7 @@ body {
   align-items: center;
   justify-content: center;
   background: linear-gradient(145deg, #35353d, #28282f);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.15s ease;
   color: var(--text-secondary);
@@ -182,7 +192,7 @@ body {
 .btn-remote:active {
   transform: scale(0.92);
   background: #222228;
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .btn-round {
@@ -190,8 +200,8 @@ body {
   height: 52px;
   border-radius: 50%;
   box-shadow:
-    3px 3px 8px rgba(0,0,0,0.4),
-    -2px -2px 6px rgba(80,80,90,0.2);
+    3px 3px 8px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(80, 80, 90, 0.2);
 }
 
 .btn-pill {
@@ -199,8 +209,8 @@ body {
   border-radius: 16px;
   padding: 0 16px;
   box-shadow:
-    3px 3px 8px rgba(0,0,0,0.4),
-    -2px -2px 6px rgba(80,80,90,0.2);
+    3px 3px 8px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(80, 80, 90, 0.2);
 }
 
 .btn-power {
@@ -233,10 +243,10 @@ body {
   background: linear-gradient(180deg, #30303a 0%, #26262e 100%);
   border-radius: 28px;
   padding: 8px 0;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    4px 4px 10px rgba(0,0,0,0.4),
-    -2px -2px 6px rgba(80,80,90,0.15);
+    4px 4px 10px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(80, 80, 90, 0.15);
 }
 
 .rocker button {
@@ -297,9 +307,9 @@ body {
   border-radius: 50%;
   background: linear-gradient(145deg, #30303a, #24242c);
   box-shadow:
-    8px 8px 20px rgba(0,0,0,0.5),
-    -4px -4px 12px rgba(80,80,90,0.15),
-    inset 0 0 0 1px rgba(255,255,255,0.07);
+    8px 8px 20px rgba(0, 0, 0, 0.5),
+    -4px -4px 12px rgba(80, 80, 90, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 .dpad-btn {
@@ -322,15 +332,45 @@ body {
   transform: scale(0.85);
 }
 
-.dpad-btn.up { top: 12px; left: 50%; transform: translateX(-50%); }
-.dpad-btn.down { bottom: 12px; left: 50%; transform: translateX(-50%); }
-.dpad-btn.left { left: 12px; top: 50%; transform: translateY(-50%); }
-.dpad-btn.right { right: 12px; top: 50%; transform: translateY(-50%); }
+.dpad-btn.up {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
 
-.dpad-btn.up:active { transform: translateX(-50%) scale(0.85); }
-.dpad-btn.down:active { transform: translateX(-50%) scale(0.85); }
-.dpad-btn.left:active { transform: translateY(-50%) scale(0.85); }
-.dpad-btn.right:active { transform: translateY(-50%) scale(0.85); }
+.dpad-btn.down {
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.dpad-btn.left {
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dpad-btn.right {
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dpad-btn.up:active {
+  transform: translateX(-50%) scale(0.85);
+}
+
+.dpad-btn.down:active {
+  transform: translateX(-50%) scale(0.85);
+}
+
+.dpad-btn.left:active {
+  transform: translateY(-50%) scale(0.85);
+}
+
+.dpad-btn.right:active {
+  transform: translateY(-50%) scale(0.85);
+}
 
 .dpad-ok {
   position: relative;
@@ -339,11 +379,11 @@ body {
   height: 90px;
   border-radius: 50%;
   background: linear-gradient(145deg, #38383f, #2a2a32);
-  border: 2px solid rgba(255,255,255,0.12);
+  border: 2px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    4px 4px 10px rgba(0,0,0,0.4),
-    -2px -2px 6px rgba(80,80,90,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.12);
+    4px 4px 10px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(80, 80, 90, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   cursor: pointer;
   color: var(--text-primary);
   font-size: 14px;
@@ -359,7 +399,7 @@ body {
 .dpad-ok:active {
   transform: scale(0.9);
   background: #222228;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* ===== NAV BUTTONS ===== */
@@ -395,17 +435,28 @@ body {
   cursor: pointer;
   transition: all 0.15s ease;
   outline: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .color-dot:active {
   transform: scale(0.8);
 }
 
-.color-dot.red { background: #ef4444; }
-.color-dot.green { background: #22c55e; }
-.color-dot.yellow { background: #eab308; }
-.color-dot.blue { background: #3b82f6; }
+.color-dot.red {
+  background: #ef4444;
+}
+
+.color-dot.green {
+  background: #22c55e;
+}
+
+.color-dot.yellow {
+  background: #eab308;
+}
+
+.color-dot.blue {
+  background: #3b82f6;
+}
 
 /* ===== NUMBER PAD ===== */
 .numpad {
@@ -512,7 +563,7 @@ body {
 .divider {
   width: 60%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
   margin: 24px 0;
 }
 
@@ -533,8 +584,15 @@ body {
 
 /* ===== RIPPLE EFFECT ===== */
 @keyframes ripple {
-  0% { transform: scale(0); opacity: 0.4; }
-  100% { transform: scale(4); opacity: 0; }
+  0% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
 }
 
 .btn-remote::after {
@@ -543,7 +601,7 @@ body {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   transform: scale(0);
   opacity: 0;
 }
@@ -559,4 +617,232 @@ body {
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, #35353d, transparent);
   margin-bottom: 8px;
+}
+
+/* ===== KEYBOARD MODAL ===== */
+.btn-keyboard {
+  color: var(--accent-blue) !important;
+  border-color: rgba(96, 165, 250, 0.2) !important;
+  background: linear-gradient(145deg, #1e2a3a, #1a2230) !important;
+}
+
+.keyboard-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.keyboard-modal {
+  width: 100%;
+  max-width: 400px;
+  background: linear-gradient(165deg, #2c2c34 0%, #222228 50%, #1c1c22 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow:
+    0 -10px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.keyboard-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.keyboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.keyboard-mode-toggle {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.mode-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-btn.active {
+  background: var(--accent-blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
+}
+
+.keyboard-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: -8px 0 0;
+}
+
+.keyboard-input {
+  width: 100%;
+  height: 52px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 0 18px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+  caret-color: var(--accent-blue);
+}
+
+.keyboard-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.keyboard-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+
+.keyboard-send-btn {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.keyboard-send-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+/* ===== TOUCHPAD OVERLAY ===== */
+.btn-mouse {
+  color: #a78bfa !important;
+  border-color: rgba(167, 139, 250, 0.2) !important;
+  background: linear-gradient(145deg, #2a1e3a, #221a30) !important;
+}
+
+.touchpad-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(11, 11, 15, 0.95);
+  z-index: 200;
+  padding: 16px;
+  padding-top: env(safe-area-inset-top, 16px);
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.touchpad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px 12px;
+}
+
+.touchpad-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.touchpad-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.touchpad-area {
+  flex: 1;
+  background: linear-gradient(165deg, rgba(44, 44, 52, 0.6) 0%, rgba(28, 28, 34, 0.8) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.05);
+}
+
+.touchpad-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  pointer-events: none;
+}
+
+.touchpad-hint p {
+  margin: 4px 0;
+}
+
+.touchpad-hint strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.touchpad-buttons {
+  display: flex;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.touchpad-btn {
+  flex: 1;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #2c2c34 0%, #222228 100%);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.touchpad-btn:active {
+  transform: scale(0.96);
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
 }
