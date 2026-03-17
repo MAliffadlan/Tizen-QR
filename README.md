@@ -6,7 +6,7 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/58953186-d243-4aae-831d-b633bf9e2cff" width="800" controls="controls" muted="muted"></video>
+  <video src="assets/video_compressed.mp4" width="800" controls="controls" muted="muted"></video>
   <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 </div>
 
