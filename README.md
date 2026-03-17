@@ -7,7 +7,7 @@
 
 <div align="center">
   <br/>
-https://github.com/MAliffadlan/Tizen-QR-Remote-Samsung/raw/main/assets/video.mp4
+  <video src="https://github.com/MAliffadlan/Tizen-QR-Remote-Samsung/raw/refs/heads/main/assets/video.mp4" width="800" controls="controls" muted="muted"></video>
   <br/>
   <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 </div>
