@@ -6,8 +6,10 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/58953186-d243-4aae-831d-b633bf9e2cff" width="800" controls="controls" muted="muted"></video>
-  <p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
+
+https://github.com/user-attachments/assets/58953186-d243-4aae-831d-b633bf9e2cff
+
+<p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
 </div>
 
 **Tizen-QR** adalah solusi *remote control* berbasis web yang dirancang untuk ekosistem Samsung Smart TV (Tizen OS). Proyek ini mengeliminasi hambatan instalasi aplikasi tradisional dengan memanfaatkan **QR-based pairing** dan **Bridge Server Architecture** untuk komunikasi *low-latency* melalui protokol WebSocket.
