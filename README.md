@@ -153,6 +153,7 @@ samsung-remote-qr/
 This project is open source and available under the [MIT License](LICENSE).
 
 ---
+"This project is an independent development and is not affiliated with, authorized, or endorsed by Samsung Electronics or the Tizen Association. 'Tizen' is a trademark of the Linux Foundation."
 
 <p align="center">
   Made with ❤️ by <strong>Boss Alif</strong>
