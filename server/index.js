@@ -18,9 +18,28 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+const ENV_FILE = path.join(__dirname, '.env');
+if (fs.existsSync(ENV_FILE)) {
+    try {
+        const envContent = fs.readFileSync(ENV_FILE, 'utf8');
+        for (const line of envContent.split('\n')) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+                const [k, ...v] = trimmed.split('=');
+                const key = k.trim();
+                const val = v.join('=').trim().replace(/^["']|["']$/g, '');
+                process.env[key] = val;
+            }
+        }
+    } catch (e) {
+        console.error('Gagal membaca .env:', e.message);
+    }
+}
+
 const PORT = 3001;
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8774634788:AAHccKIZWnGOCvZYAq8T4SA5VZMDntZnFac';
-const ALLOWED_USER_ID = '5868902139';
+const ALLOWED_USER_ID = process.env.ALLOWED_USER_ID || '5868902139';
+const REMOTE_PIN = process.env.REMOTE_PIN || '2026';
 const TOKEN_FILE = path.join(__dirname, 'tv-token.txt');
 const CONFIG_FILE = path.join(__dirname, 'tv-config.json');
 const REMOTE_NAME = 'Alif_Remote_Super';
@@ -437,16 +456,24 @@ io.use((socket, next) => {
         (headers['host'] && headers['host'].includes('remote.malifadlan.dev'))
     );
 
+    // 1. PIN Web Authentication (untuk akses langsung via browser publik)
+    const pin = socket.handshake.auth?.pin;
+    if (pin && typeof pin === 'string' && pin.trim() === REMOTE_PIN) {
+        const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
+        console.log(`[Auth] Akses diizinkan via PIN Web dari IP: ${clientIp}`);
+        return next();
+    }
+
+    // 2. Telegram WebApp HMAC Authentication (jika dibuka lewat bot Telegram)
     const initData = socket.handshake.auth?.initData;
     const user = validateTelegramWebAppData(initData);
-
     if (user && user.id && user.id.toString() === ALLOWED_USER_ID) {
         socket.data.user = user;
         console.log(`[Auth] User Telegram terotentikasi: ${user.username || user.first_name} (ID: ${user.id})`);
         return next();
     }
 
-    // Izinkan akses langsung dari jaringan lokal (LAN) jika tidak lewat Cloudflare tunnel
+    // 3. Akses Langsung Jaringan Lokal (LAN) jika tidak lewat Cloudflare tunnel
     if (!isPublicTunnel) {
         const ip = socket.handshake.address;
         if (ip === '127.0.0.1' || ip === '::1' || ip.includes('192.168.1.') || ip.includes('127.0.0.1')) {
@@ -456,7 +483,7 @@ io.use((socket, next) => {
     }
 
     const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
-    console.warn(`[Security] Akses ditolak dari IP: ${clientIp} (Bukan pemilik bot / tidak ada initData valid)`);
+    console.warn(`[Security] Akses ditolak dari IP: ${clientIp} (Bukan pemilik bot / PIN tidak valid)`);
     return next(new Error('UNAUTHORIZED'));
 });
 

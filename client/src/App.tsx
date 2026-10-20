@@ -5,7 +5,7 @@ import {
   Power, VolumeX, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, Home, ArrowLeft, Settings,
   Tv, Mic, Play, Pause,
-  LayoutGrid, Youtube, FastForward, Rewind, Keyboard, Mouse, Lock
+  LayoutGrid, Youtube, FastForward, Rewind, Keyboard, Mouse, Lock, KeyRound
 } from 'lucide-react';
 
 let socket: Socket;
@@ -16,11 +16,13 @@ const RemoteButton: React.FC<{
   children: React.ReactNode;
   whileTap?: TargetAndTransition;
   style?: React.CSSProperties;
-}> = ({ onClick, className = '', children, whileTap, style }) => (
+  title?: string;
+}> = ({ onClick, className = '', children, whileTap, style, title }) => (
   <motion.button
     onClick={onClick}
     className={`btn-remote ${className}`}
     style={style}
+    title={title}
     whileTap={whileTap || { scale: 0.88 }}
     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
   >
@@ -32,6 +34,9 @@ const RemoteApp: React.FC = () => {
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'scanning' | 'error'>('disconnected');
   const [statusMsg, setStatusMsg] = useState('Sedang menyambungkan...');
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [inputMode, setInputMode] = useState<'instant' | 'bulk'>('instant');
@@ -49,25 +54,41 @@ const RemoteApp: React.FC = () => {
     }
 
     const initData = tg?.initData || '';
+
+    // Support URL query ?pin=... or saved in localStorage
+    const params = new URLSearchParams(window.location.search);
+    const urlPin = params.get('pin');
+    if (urlPin) {
+      localStorage.setItem('tizen_remote_pin', urlPin);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    const savedPin = localStorage.getItem('tizen_remote_pin') || '';
+
     const isDev = window.location.port === '5173';
     const serverUrl = isDev ? `http://${window.location.hostname}:3001` : window.location.origin;
     
     socket = io(serverUrl, {
-      auth: { initData },
+      auth: { initData, pin: savedPin },
       reconnectionAttempts: 3
     });
 
     socket.on('connect', () => {
       setIsUnauthorized(false);
+      setPinError('');
+      setIsVerifyingPin(false);
       setStatus('scanning');
       setStatusMsg('Terhubung ke Server Bridge');
     });
 
     socket.on('connect_error', (err) => {
+      setIsVerifyingPin(false);
       if (err.message && err.message.toUpperCase().includes('UNAUTHORIZED')) {
         setIsUnauthorized(true);
         setStatus('error');
         setStatusMsg('Akses Ditolak');
+        if (savedPin) {
+          setPinError('PIN tersimpan tidak valid atau telah diubah');
+        }
         socket.disconnect();
       } else {
         setStatus('error');
@@ -193,6 +214,28 @@ const RemoteApp: React.FC = () => {
     lastTouchRef.current = null;
   }, []);
 
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPin = pinInput.trim();
+    if (!cleanPin) return;
+    setIsVerifyingPin(true);
+    setPinError('');
+    localStorage.setItem('tizen_remote_pin', cleanPin);
+
+    const tg = (window as any).Telegram?.WebApp;
+    const initData = tg?.initData || '';
+    socket.auth = { initData, pin: cleanPin };
+    socket.connect();
+  };
+
+  const handleLock = () => {
+    localStorage.removeItem('tizen_remote_pin');
+    setPinInput('');
+    setPinError('');
+    setIsUnauthorized(true);
+    socket.disconnect();
+  };
+
   if (isUnauthorized) {
     return (
       <div className="remote-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
@@ -203,14 +246,78 @@ const RemoteApp: React.FC = () => {
           initial={{ scale: 0.92, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          style={{ width: '100%', maxWidth: '340px', padding: '40px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+          style={{ width: '100%', maxWidth: '340px', padding: '36px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
         >
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-            <Lock size={32} />
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(96, 165, 250, 0.12)', border: '1px solid rgba(96, 165, 250, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
+            <KeyRound size={30} />
           </div>
-          <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: 600, margin: 0 }}>Akses Ditolak</h2>
-          <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-            Remote TV Samsung ini diproteksi. Hanya pemilik bot yang dapat mengontrol TV ini melalui Telegram.
+          <div>
+            <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: 600, margin: '0 0 6px 0' }}>Autentikasi Remote</h2>
+            <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>
+              Masukkan PIN untuk mengontrol TV Samsung langsung dari browser.
+            </p>
+          </div>
+
+          <form onSubmit={handlePinSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={12}
+              value={pinInput}
+              onChange={(e) => {
+                setPinInput(e.target.value);
+                setPinError('');
+              }}
+              placeholder="••••"
+              autoFocus
+              style={{
+                width: '100%',
+                maxWidth: '220px',
+                padding: '12px 16px',
+                borderRadius: '16px',
+                background: '#18181b',
+                border: pinError ? '1px solid #ef4444' : '1px solid #3f3f46',
+                color: '#fff',
+                fontSize: '22px',
+                textAlign: 'center',
+                letterSpacing: '6px',
+                outline: 'none',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+                transition: 'all 0.2s',
+              }}
+            />
+
+            {pinError && (
+              <p style={{ color: '#ef4444', fontSize: '12px', margin: 0, fontWeight: 500 }}>
+                {pinError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isVerifyingPin || !pinInput.trim()}
+              style={{
+                width: '100%',
+                maxWidth: '220px',
+                padding: '12px 20px',
+                borderRadius: '16px',
+                background: isVerifyingPin ? '#3b82f6aa' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: 600,
+                border: 'none',
+                cursor: isVerifyingPin ? 'default' : 'pointer',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {isVerifyingPin ? 'Memverifikasi...' : 'Buka Akses'}
+            </button>
+          </form>
+
+          <p style={{ color: '#71717a', fontSize: '11px', margin: '4px 0 0 0' }}>
+            PIN akan tersimpan otomatis di browser ini.
           </p>
         </motion.div>
       </div>
@@ -244,8 +351,11 @@ const RemoteApp: React.FC = () => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
               </motion.div>
             </RemoteButton>
-            <RemoteButton onClick={() => sendKey('KEY_MENU')} className="btn-round" style={{ width: 36, height: 36 }}>
+            <RemoteButton onClick={() => sendKey('KEY_MENU')} className="btn-round" style={{ width: 36, height: 36, marginRight: 8 }}>
               <Settings size={14} />
+            </RemoteButton>
+            <RemoteButton onClick={handleLock} className="btn-round" style={{ width: 36, height: 36 }} title="Kunci Remote">
+              <Lock size={13} />
             </RemoteButton>
           </div>
         </div>
