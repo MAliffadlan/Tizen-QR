@@ -37,9 +37,16 @@ if (fs.existsSync(ENV_FILE)) {
 }
 
 const PORT = 3001;
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8774634788:AAHccKIZWnGOCvZYAq8T4SA5VZMDntZnFac';
-const ALLOWED_USER_ID = process.env.ALLOWED_USER_ID || '5868902139';
-const REMOTE_PIN = process.env.REMOTE_PIN || '2026';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const ALLOWED_USER_ID = process.env.ALLOWED_USER_ID || '';
+const REMOTE_PIN = process.env.REMOTE_PIN || '';
+
+if (!BOT_TOKEN) {
+    console.warn('[Security] PERINGATAN: TELEGRAM_BOT_TOKEN tidak ditemukan di .env!');
+}
+if (!REMOTE_PIN) {
+    console.warn('[Security] PERINGATAN: REMOTE_PIN tidak ditemukan di .env!');
+}
 const TOKEN_FILE = path.join(__dirname, 'tv-token.txt');
 const CONFIG_FILE = path.join(__dirname, 'tv-config.json');
 const REMOTE_NAME = 'Alif_Remote_Super';
