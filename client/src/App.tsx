@@ -5,7 +5,7 @@ import {
   Power, VolumeX, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, Home, ArrowLeft, Settings,
   Tv, Mic, Play, Pause,
-  LayoutGrid, Youtube, FastForward, Rewind, Keyboard, Mouse
+  LayoutGrid, Youtube, FastForward, Rewind, Keyboard, Mouse, Lock
 } from 'lucide-react';
 
 let socket: Socket;
@@ -31,6 +31,7 @@ const RemoteButton: React.FC<{
 const RemoteApp: React.FC = () => {
   const [status, setStatus] = useState<'connected' | 'disconnected' | 'scanning' | 'error'>('disconnected');
   const [statusMsg, setStatusMsg] = useState('Sedang menyambungkan...');
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [inputMode, setInputMode] = useState<'instant' | 'bulk'>('instant');
@@ -40,12 +41,38 @@ const RemoteApp: React.FC = () => {
   const movedRef = useRef(false);
 
   useEffect(() => {
-    const serverUrl = `http://${window.location.hostname}:3001`;
-    socket = io(serverUrl);
+    // Inisialisasi Telegram WebApp jika dibuka di dalam Telegram
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    const initData = tg?.initData || '';
+    const isDev = window.location.port === '5173';
+    const serverUrl = isDev ? `http://${window.location.hostname}:3001` : window.location.origin;
+    
+    socket = io(serverUrl, {
+      auth: { initData },
+      reconnectionAttempts: 3
+    });
 
     socket.on('connect', () => {
+      setIsUnauthorized(false);
       setStatus('scanning');
       setStatusMsg('Terhubung ke Server Bridge');
+    });
+
+    socket.on('connect_error', (err) => {
+      if (err.message && err.message.toUpperCase().includes('UNAUTHORIZED')) {
+        setIsUnauthorized(true);
+        setStatus('error');
+        setStatusMsg('Akses Ditolak');
+        socket.disconnect();
+      } else {
+        setStatus('error');
+        setStatusMsg('Gagal menyambung ke server');
+      }
     });
 
     socket.on('disconnect', () => {
@@ -165,6 +192,30 @@ const RemoteApp: React.FC = () => {
     }
     lastTouchRef.current = null;
   }, []);
+
+  if (isUnauthorized) {
+    return (
+      <div className="remote-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
+        <div className="ambient-glow glow-1" />
+        <div className="ambient-glow glow-2" />
+        <motion.div
+          className="remote-shell"
+          initial={{ scale: 0.92, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          style={{ width: '100%', maxWidth: '340px', padding: '40px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+        >
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+            <Lock size={32} />
+          </div>
+          <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: 600, margin: 0 }}>Akses Ditolak</h2>
+          <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+            Remote TV Samsung ini diproteksi. Hanya pemilik bot yang dapat mengontrol TV ini melalui Telegram.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="remote-body">

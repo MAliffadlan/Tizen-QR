@@ -7,12 +7,15 @@ const { internalIpV4 } = require('internal-ip');
 const fs = require('fs');
 const path = require('path');
 const wol = require('wake_on_lan');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = 3001;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8774634788:AAHccKIZWnGOCvZYAq8T4SA5VZMDntZnFac';
+const ALLOWED_USER_ID = '5868902139';
 const TOKEN_FILE = path.join(__dirname, 'tv-token.txt');
 const CONFIG_FILE = path.join(__dirname, 'tv-config.json');
 const REMOTE_NAME = 'Alif_Remote_Super';
@@ -54,7 +57,42 @@ function getSavedToken() {
     return '';
 }
 
-// --- Auto Discovery ---
+// --- Auto Discovery & ARP Resolution ---
+let isScanning = false;
+
+function getIpFromArp(macAddress) {
+    if (!macAddress) return null;
+    const targetMac = macAddress.toLowerCase().trim();
+    try {
+        if (!fs.existsSync('/proc/net/arp')) return null;
+        const arpData = fs.readFileSync('/proc/net/arp', 'utf8');
+        const lines = arpData.split('\n');
+        for (const line of lines) {
+            const parts = line.split(/\s+/).filter(Boolean);
+            if (parts.length >= 4) {
+                const ip = parts[0];
+                const mac = parts[3].toLowerCase().trim();
+                if (mac === targetMac) {
+                    return ip;
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[ARP] Gagal membaca ARP table:', e);
+    }
+    return null;
+}
+
+async function triggerAutoScan() {
+    if (isScanning) return;
+    isScanning = true;
+    const found = await scanForTv();
+    isScanning = false;
+    if (found) {
+        connectToTv(8002);
+    }
+}
+
 async function scanForTv() {
     console.log('\n🔍 Memulai pelacakan TV Samsung di jaringan...');
     io.emit('tv-status', 'Sedang melacak TV di jaringan...');
@@ -105,6 +143,7 @@ async function scanForTv() {
         return foundTv;
     } else {
         console.log('❌ Tidak ada TV Samsung yang ditemukan.');
+        io.emit('tv-status', 'TV offline atau tidak ditemukan');
         return null;
     }
 }
@@ -156,25 +195,47 @@ function connectToTv(port = 8002) {
 
     tvWs.on('error', (err) => {
         console.error(`Gagal konek ke ${tvConfig.ip}:${port}:`, err.message);
-        if (port === 8002 && err.message.includes('ECONNREFUSED')) {
+        if (port === 8002 && (err.message.includes('ECONNREFUSED') || err.message.includes('EHOSTUNREACH') || err.message.includes('ETIMEDOUT'))) {
             console.log('Mencoba fallback ke Port 8001...');
             setTimeout(() => connectToTv(8001), 2000);
+        } else if (port === 8001) {
+            console.log('Kedua port gagal. Memulai pencarian TV otomatis di jaringan...');
+            triggerAutoScan();
         } else {
             io.emit('tv-status', 'Gagal terhubung ke TV');
         }
     });
 }
 
+function sendWakeOnLan(mac) {
+    if (!mac) return;
+    console.log(`--- MENGIRIM MAGIC PACKET (WAKE-ON-LAN) KE ${mac} ---`);
+    wol.wake(mac, { address: '192.168.1.255', num_packets: 5, interval: 50 }, (err) => {
+        if (!err) console.log(`Magic Packet terkirim ke 192.168.1.255 (${mac})`);
+    });
+    wol.wake(mac, { address: '255.255.255.255', num_packets: 5, interval: 50 }, (err) => {
+        if (!err) console.log(`Magic Packet terkirim ke 255.255.255.255 (${mac})`);
+    });
+}
+
 function sendKey(key) {
     if (key === 'KEY_POWER' && tvConfig.mac) {
-        console.log(`--- MENGIRIM MAGIC PACKET (WAKE-ON-LAN) KE ${tvConfig.mac} ---`);
-        wol.wake(tvConfig.mac, (err) => {
-            if (!err) console.log('Magic Packet terkirim ke ' + tvConfig.mac);
-        });
+        sendWakeOnLan(tvConfig.mac);
     }
 
     if (!tvWs || tvWs.readyState !== WebSocket.OPEN) {
         console.log('Koneksi belum siap, mencoba menyambung kembali...');
+        
+        // Cek dulu apakah IP berubah di ARP table
+        if (tvConfig.mac) {
+            const arpIp = getIpFromArp(tvConfig.mac);
+            if (arpIp && arpIp !== tvConfig.ip) {
+                console.log(`[ARP Auto-Scan] Mendeteksi IP TV berubah dari ${tvConfig.ip} ke ${arpIp}`);
+                tvConfig.ip = arpIp;
+                saveTvConfig(tvConfig);
+            }
+        }
+
         if (tvConfig.ip) {
             connectToTv(currentPort);
         } else {
@@ -265,6 +326,14 @@ async function scanAndConnect() {
     
     // Always start by trying to connect if we have a config
     if (hasConfig) {
+        if (tvConfig.mac) {
+            const arpIp = getIpFromArp(tvConfig.mac);
+            if (arpIp && arpIp !== tvConfig.ip) {
+                console.log(`[ARP Auto-Scan] Mendeteksi IP TV berubah dari ${tvConfig.ip} ke ${arpIp}`);
+                tvConfig.ip = arpIp;
+                saveTvConfig(tvConfig);
+            }
+        }
         connectToTv(8002);
     } else {
         // If no config, we must scan
@@ -274,6 +343,75 @@ async function scanAndConnect() {
         }
     }
 }
+
+// --- Telegram WebApp HMAC Authentication ---
+function validateTelegramWebAppData(telegramInitData) {
+    if (!telegramInitData) return null;
+    try {
+        const initData = new URLSearchParams(telegramInitData);
+        const hash = initData.get('hash');
+        if (!hash) return null;
+
+        initData.delete('hash');
+        initData.sort();
+
+        const dataToCheck = [...initData.entries()]
+            .map(([key, value]) => `${key}=${value}`)
+            .join('\n');
+
+        const secretKey = crypto
+            .createHmac('sha256', 'WebAppData')
+            .update(BOT_TOKEN)
+            .digest();
+
+        const calculatedHash = crypto
+            .createHmac('sha256', secretKey)
+            .update(dataToCheck)
+            .digest('hex');
+
+        if (hash !== calculatedHash) {
+            return null;
+        }
+
+        const userStr = initData.get('user');
+        if (!userStr) return null;
+        return JSON.parse(userStr);
+    } catch (e) {
+        console.error('[Auth] Gagal validasi initData:', e.message);
+        return null;
+    }
+}
+
+io.use((socket, next) => {
+    const headers = socket.handshake.headers;
+    const isPublicTunnel = Boolean(
+        headers['cf-ray'] || 
+        headers['cf-connecting-ip'] || 
+        (headers['host'] && headers['host'].includes('remote.malifadlan.dev'))
+    );
+
+    const initData = socket.handshake.auth?.initData;
+    const user = validateTelegramWebAppData(initData);
+
+    if (user && user.id && user.id.toString() === ALLOWED_USER_ID) {
+        socket.data.user = user;
+        console.log(`[Auth] User Telegram terotentikasi: ${user.username || user.first_name} (ID: ${user.id})`);
+        return next();
+    }
+
+    // Izinkan akses langsung dari jaringan lokal (LAN) jika tidak lewat Cloudflare tunnel
+    if (!isPublicTunnel) {
+        const ip = socket.handshake.address;
+        if (ip === '127.0.0.1' || ip === '::1' || ip.includes('192.168.1.') || ip.includes('127.0.0.1')) {
+            console.log(`[Auth] Akses LAN diizinkan dari ${ip}`);
+            return next();
+        }
+    }
+
+    const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
+    console.warn(`[Security] Akses ditolak dari IP: ${clientIp} (Bukan pemilik bot / tidak ada initData valid)`);
+    return next(new Error('UNAUTHORIZED'));
+});
 
 io.on('connection', (socket) => {
     console.log('HP Terhubung ke Server Bridge!');
@@ -301,13 +439,15 @@ async function startServer() {
     // Start network scan and connect logic
     scanAndConnect();
 
-    // Start Express Web Server
-    const localIp = await internalIpV4();
-    console.log(`\nBridge: http://${localIp}:${PORT}`);
-    qrcode.toString(`http://${localIp}:5173`, { type: 'terminal', small: true }, (err, url) => {
-        console.log('\nSCAN QR NYA BOS ALIF:\n');
-        console.log(url);
-    });
+    // Serve static client built frontend
+    const CLIENT_DIST = path.join(__dirname, '../client/dist');
+    if (fs.existsSync(CLIENT_DIST)) {
+        app.use(express.static(CLIENT_DIST));
+        app.use((req, res) => {
+            res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+        });
+    }
+
     server.listen(PORT, '0.0.0.0');
 }
 
