@@ -1,4 +1,4 @@
-# 📺 Tizen-QR: High-Performance Web-Based Samsung Smart TV Remote
+# Tizen-QR: High-Performance Web-Based Samsung Smart TV Remote
 
 [![Built with React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -7,108 +7,110 @@
 
 <div align="center">
 
-
-
 https://github.com/user-attachments/assets/5bb51042-7140-4303-8093-5b3715b9bf02
 
-
-
-<p><em>📱 Scan QR → Open on phone → Control your TV</em></p>
+<p><em>Scan QR / Buka di Peramban / Telegram Mini App -> Kontrol TV Anda</em></p>
 </div>
 
-**Tizen-QR** adalah solusi *remote control* berbasis web yang dirancang untuk ekosistem Samsung Smart TV (Tizen OS). Proyek ini mengeliminasi hambatan instalasi aplikasi tradisional dengan memanfaatkan **QR-based pairing** dan **Bridge Server Architecture** untuk komunikasi *low-latency* melalui protokol WebSocket.
+**Tizen-QR** adalah solusi *remote control* berbasis web yang dirancang untuk ekosistem Samsung Smart TV (Tizen OS). Proyek ini mengeliminasi hambatan instalasi aplikasi tradisional dengan memanfaatkan arsitektur **Bridge Server** untuk komunikasi *low-latency* melalui protokol WebSocket, serta mendukung akses melalui browser publik, jaringan lokal (LAN), maupun Telegram Mini App.
 
 ---
 
-## 🚀 Key Features
+## Fitur Utama
 
-- **Zero-Install UX**: Cukup scan QR code dari terminal server, dan remote langsung aktif di browser smartphone tanpa perlu mengunduh aplikasi di Play Store/App Store.
-- **Full Control Suite**: Navigasi D-Pad, Volume Control, Channel Switching, Home, Return, hingga App Shortcuts (Netflix/YouTube).
-- **Wake-on-LAN (WoL)**: Menghidupkan TV dari mode *standby* menggunakan *Magic Packet* melalui alamat MAC TV, mengatasi masalah port WebSocket yang tertutup saat TV mati.
-- **Haptic Feedback Engine**: Memberikan sensasi taktil (getaran) saat tombol ditekan menggunakan browser Haptic API untuk meningkatkan *user experience*.
-- **State Persistence**: Otomatis menyimpan dan menggunakan kembali *pairing token* (di `tv-token.txt`) untuk koneksi instan di masa mendatang tanpa notifikasi "Allow/Deny" berulang.
-- **Premium Neumorphic UI**: Antarmuka modern dengan gaya *Glassmorphism* dan *Neumorphism* yang elegan, dioptimalkan untuk perangkat mobile.
+- **Zero-Install UX**: Dapat diakses langsung melalui peramban mobile (Chrome, Safari, Brave) atau sebagai Telegram WebApp tanpa instalasi dari app store.
+- **Sistem Keamanan Berlapis (Defense-in-Depth)**:
+  - **PIN Security & Rate Limiting**: Proteksi akses peramban publik dengan PIN rahasia. Dilengkapi pembatasan percobaan gagal berbasis IP (maksimal 5 kali kegagalan, diblokir sementara 1 menit) dan komparasi waktu konstan (`crypto.timingSafeEqual`).
+  - **Telegram HMAC Authentication**: Otentikasi sesi Telegram Mini App dengan verifikasi tanda tangan HMAC-SHA256 serta validasi batas kedaluwarsa waktu `auth_date` (pencegahan replay attack).
+  - **Input & Payload Validation**: Whitelist tombol Samsung (`KEY_*`), batasan teks (maksimal 2048 karakter), dan validasi delta pergerakan mouse pada Socket.IO.
+- **Wake-on-LAN (WoL) & Dynamic ARP Resolution**: Menghidupkan TV dari mode *standby* menggunakan *Magic Packet* ke alamat MAC TV, serta kemampuan mendeteksi perubahan IP TV otomatis via tabel ARP sistem.
+- **Full Control Suite**: D-Pad navigasi, pengaturan volume, pergantian channel, tombol navigasi sistem (Home, Return, Menu), hingga pintasan aplikasi (Netflix/YouTube).
+- **Haptic Feedback Engine**: Memberikan sensasi getaran taktil saat tombol ditekan menggunakan browser Haptic API.
+- **Penyimpanan Atomik & State Persistence**: Menyimpan pairing token TV di `tv-token.txt` dan konfigurasi TV di `tv-config.json` menggunakan mekanisme penulisan atomik (pencegahan korupsi berkas saat crash).
+- **Modern Neumorphic UI**: Tampilan antarmuka modern dengan efek ambient glow, status bar terintegrasi, touchpad interaktif, dan keyboard virtual.
 
 ---
 
-## 🏗️ System Architecture (The Bridge Server)
+## Arsitektur Sistem (Bridge Server)
 
-Salah satu aspek teknis paling krusial dalam proyek ini adalah penggunaan **Node.js Bridge Server**. Arsitektur ini dipilih untuk mengatasi batasan keamanan pada browser modern (CORS & Mixed Content).
+Arsitektur **Node.js Bridge Server** digunakan untuk menjembatani keterbatasan keamanan browser modern (CORS, mixed-content, dan sertifikat self-signed pada WebSocket TV).
 
 ```text
-📱 Smartphone Browser (Client)
+Smartphone / Telegram Mini App (Client)
        │
-       │ [Socket.IO / Event-Driven]
+       │ [Socket.IO / Auth: PIN / HMAC]
        ▼
-🖥️ Node.js Bridge Server (The Bridge)
+Node.js Bridge Server (Express + Socket.IO :3001)
        │
-       │ [WebSocket (WSS) / Port 8002]
+       │ [WebSocket WSS Port 8002 / HTTP Port 8001 / UDP WoL]
        ▼
-📺 Samsung Smart TV (Tizen OS)
+Samsung Smart TV (Tizen OS)
 ```
 
-### Mengapa Arsitektur Bridge?
-1. **Bypassing SSL/CORS**: Browser smartphone melarang koneksi WebSocket langsung ke IP lokal TV yang menggunakan sertifikat *self-signed*. Bridge server menangani jabat tangan SSL secara *server-side*.
-2. **Persistent Identification**: Server menggunakan `FIXED_ID` permanen agar TV Samsung mengenali perangkat sebagai remote yang sama, mencegah munculnya notifikasi pairing berulang kali.
-3. **Network Discovery & WoL**: Memungkinkan server untuk mengirimkan paket UDP (WoL) yang tidak diizinkan langsung dari browser web smartphone.
+---
+
+## Konfigurasi Lingkungan (.env)
+
+Server mendukung konfigurasi variabel lingkungan melalui berkas `server/.env`:
+
+```env
+# PIN untuk otentikasi akses peramban publik
+REMOTE_PIN=2026
+
+# Kredensial integrasi bot Telegram (opsional jika menggunakan Telegram Mini App)
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+ALLOWED_USER_ID=your_telegram_user_id
+```
 
 ---
 
-## 🧠 Technical Challenges & Solutions
+## Panduan Instalasi & Menjalankan
 
-### 1. Bypassing SSL & Token Pairing
-Samsung Smart TV (2016+) menggunakan port `8002` (WSS) dengan protokol keamanan yang ketat. 
-- **Solusi**: Implementasi manual WebSocket menggunakan library `ws` di Node.js dengan flag `rejectUnauthorized: false`. Server menangkap event `ms.channel.connect`, mengekstrak token otentikasi, dan menyimpannya secara lokal untuk sesi berikutnya.
-
-### 2. Wake-on-LAN Implementation
-Saat TV dalam mode *standby*, port LAN/Wi-Fi seringkali mati total, menyebabkan error `EHOSTUNREACH`.
-- **Solusi**: Integrasi library `wake_on_lan` untuk menembak *Magic Packet* ke MAC Address TV sesaat sebelum perintah `KEY_POWER` dikirimkan, memastikan TV "bangun" dan siap menerima koneksi WebSocket.
-
-### 3. Low-Latency Interaction
-Remote control membutuhkan respon instan agar terasa seperti remote fisik.
-- **Solusi**: Menggunakan **Socket.IO** untuk jalur komunikasi dua arah (full-duplex) antara smartphone dan server, memastikan perintah diteruskan ke TV dalam waktu kurang dari 50ms.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite, TailwindCSS, Lucide Icons |
-| **Backend** | Node.js, Express, Socket.IO, WebSocket (ws) |
-| **Networking** | Wake-on-LAN (UDP), QR-Code Terminal Generator |
-| **Styling** | Neumorphic Design, Glassmorphism Effects |
-
----
-
-## 📦 Installation & Setup
-
-### 1. Clone & Install
+### 1. Kloning Repositori
 ```bash
 git clone https://github.com/MAliffadlan/Tizen-QR.git
 cd Tizen-QR
 ```
 
-### 2. Configure TV Identity
-Buka `server/index.js` dan sesuaikan IP serta MAC Address TV Anda:
-```javascript
-const TV_IP = '192.168.1.x';  // IP Smart TV Anda
-const TV_MAC = 'XX:XX:XX:XX'; // MAC Address TV (untuk fitur WoL)
+### 2. Instalasi Dependensi
+```bash
+# Backend Server
+cd server && npm install
+
+# Frontend Client
+cd ../client && npm install
 ```
 
-### 3. Run the Project
-**Terminal 1 (Server Bridge):**
+### 3. Menjalankan Server & Client
+
+**Menjalankan Backend Server:**
 ```bash
-cd server && npm install && node index.js
+cd server
+npm start
+# atau node index.js
 ```
-**Terminal 2 (Web Client):**
+
+**Menjalankan Frontend (Development):**
 ```bash
-cd client && npm install && npm run dev -- --host
+cd client
+npm run dev -- --host
+```
+
+**Membangun Frontend (Production):**
+```bash
+cd client
+npm run build
+```
+Hasil build pada `client/dist` akan secara otomatis dilayani oleh Express pada port `3001`.
+
+### 4. Pengujian Keamanan
+Untuk menjalankan unit test keamanan dan validasi handler:
+```bash
+cd server
+npm test
 ```
 
 ---
-"This project is an independent development and is not affiliated with, authorized, or endorsed by Samsung Electronics or the Tizen Association. 'Tizen' is a trademark of the Linux Foundation."
 
-<p align="center">
-  Developed with Precision & Determination by <strong>Bos Alif</strong> 🚀
-</p>
+## Lisensi
+Proyek ini merupakan pengembangan independen dan tidak berafiliasi dengan, diizinkan oleh, atau didukung oleh Samsung Electronics atau Tizen Association. "Tizen" adalah merek dagang dari Linux Foundation.

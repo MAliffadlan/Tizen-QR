@@ -35,3 +35,7 @@ server/tv-token.txt
 
 # Local config
 *.local
+
+# Local testing
+server/test_tv.js
+
