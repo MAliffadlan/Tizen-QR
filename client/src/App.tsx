@@ -82,12 +82,19 @@ const RemoteApp: React.FC = () => {
 
     socket.on('connect_error', (err) => {
       setIsVerifyingPin(false);
-      if (err.message && err.message.toUpperCase().includes('UNAUTHORIZED')) {
+      const errMsg = (err.message || '').toUpperCase();
+      if (errMsg.includes('RATE_LIMITED')) {
+        setIsUnauthorized(true);
+        setStatus('error');
+        setStatusMsg('Percobaan Dibatasi');
+        setPinError('Terlalu banyak percobaan salah. Diblokir sementara selama 1 menit.');
+        socket.disconnect();
+      } else if (errMsg.includes('UNAUTHORIZED')) {
         setIsUnauthorized(true);
         setStatus('error');
         setStatusMsg('Akses Ditolak');
         if (savedPin) {
-          setPinError('PIN tersimpan tidak valid atau telah diubah');
+          setPinError('PIN salah atau tidak valid');
         }
         socket.disconnect();
       } else {

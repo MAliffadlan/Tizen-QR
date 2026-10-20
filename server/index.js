@@ -83,9 +83,12 @@ function loadTvConfig() {
 
 function saveTvConfig(config) {
     tvConfig = { ...tvConfig, ...config };
+    const tempConfig = `${CONFIG_FILE}.tmp.${Date.now()}`;
     try {
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(tvConfig, null, 2));
+        fs.writeFileSync(tempConfig, JSON.stringify(tvConfig, null, 2));
+        fs.renameSync(tempConfig, CONFIG_FILE);
     } catch (err) {
+        try { if (fs.existsSync(tempConfig)) fs.unlinkSync(tempConfig); } catch (_) {}
         console.error('Gagal menyimpan config TV:', err.message);
         return false;
     }
@@ -410,6 +413,52 @@ async function scanAndConnect() {
     }
 }
 
+// --- Rate Limiter & Constant-Time PIN Auth ---
+const failedPinAttempts = new Map();
+
+function isPinRateLimited(ip) {
+    if (!ip) return false;
+    const now = Date.now();
+    const record = failedPinAttempts.get(ip);
+    if (!record) return false;
+    if (now > record.resetTime) {
+        failedPinAttempts.delete(ip);
+        return false;
+    }
+    return record.count >= 5;
+}
+
+function recordPinFailure(ip) {
+    if (!ip) return;
+    const now = Date.now();
+    const record = failedPinAttempts.get(ip) || { count: 0, resetTime: now + 60000 };
+    record.count += 1;
+    failedPinAttempts.set(ip, record);
+}
+
+function clearPinFailure(ip) {
+    if (ip) failedPinAttempts.delete(ip);
+}
+
+function isPinValid(pin) {
+    if (!pin || typeof pin !== 'string') return false;
+    try {
+        const inputHash = crypto.createHash('sha256').update(pin.trim()).digest();
+        const expectedHash = crypto.createHash('sha256').update(REMOTE_PIN).digest();
+        return crypto.timingSafeEqual(inputHash, expectedHash);
+    } catch {
+        return false;
+    }
+}
+
+function isLoopbackOrLan(ip) {
+    if (!ip) return false;
+    const cleanIp = ip.replace(/^::ffff:/, '');
+    if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost') return true;
+    if (cleanIp.startsWith('192.168.1.')) return true;
+    return false;
+}
+
 // --- Telegram WebApp HMAC Authentication ---
 function validateTelegramWebAppData(telegramInitData) {
     if (!telegramInitData) return null;
@@ -417,6 +466,16 @@ function validateTelegramWebAppData(telegramInitData) {
         const initData = new URLSearchParams(telegramInitData);
         const hash = initData.get('hash');
         if (!hash) return null;
+
+        const authDateStr = initData.get('auth_date');
+        if (!authDateStr) return null;
+        const authDate = parseInt(authDateStr, 10);
+        const now = Math.floor(Date.now() / 1000);
+        // Validasi kesegaran: tolak jika lebih lama dari 24 jam (86400s) atau timestamp masa depan (>300s)
+        if (isNaN(authDate) || (now - authDate) > 86400 || (authDate - now) > 300) {
+            console.warn('[Auth] Telegram initData telah kedaluwarsa atau tidak valid');
+            return null;
+        }
 
         initData.delete('hash');
         initData.sort();
@@ -450,6 +509,7 @@ function validateTelegramWebAppData(telegramInitData) {
 
 io.use((socket, next) => {
     const headers = socket.handshake.headers;
+    const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
     const isPublicTunnel = Boolean(
         headers['cf-ray'] || 
         headers['cf-connecting-ip'] || 
@@ -458,10 +518,20 @@ io.use((socket, next) => {
 
     // 1. PIN Web Authentication (untuk akses langsung via browser publik)
     const pin = socket.handshake.auth?.pin;
-    if (pin && typeof pin === 'string' && pin.trim() === REMOTE_PIN) {
-        const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
-        console.log(`[Auth] Akses diizinkan via PIN Web dari IP: ${clientIp}`);
-        return next();
+    if (pin) {
+        if (isPinRateLimited(clientIp)) {
+            console.warn(`[Security] Percobaan PIN diblokir (Rate limit) dari IP: ${clientIp}`);
+            return next(new Error('RATE_LIMITED'));
+        }
+        if (isPinValid(pin)) {
+            clearPinFailure(clientIp);
+            console.log(`[Auth] Akses diizinkan via PIN Web dari IP: ${clientIp}`);
+            return next();
+        } else {
+            recordPinFailure(clientIp);
+            console.warn(`[Security] PIN salah dari IP: ${clientIp}`);
+            return next(new Error('UNAUTHORIZED'));
+        }
     }
 
     // 2. Telegram WebApp HMAC Authentication (jika dibuka lewat bot Telegram)
@@ -474,15 +544,11 @@ io.use((socket, next) => {
     }
 
     // 3. Akses Langsung Jaringan Lokal (LAN) jika tidak lewat Cloudflare tunnel
-    if (!isPublicTunnel) {
-        const ip = socket.handshake.address;
-        if (ip === '127.0.0.1' || ip === '::1' || ip.includes('192.168.1.') || ip.includes('127.0.0.1')) {
-            console.log(`[Auth] Akses LAN diizinkan dari ${ip}`);
-            return next();
-        }
+    if (!isPublicTunnel && isLoopbackOrLan(socket.handshake.address)) {
+        console.log(`[Auth] Akses LAN diizinkan dari ${socket.handshake.address}`);
+        return next();
     }
 
-    const clientIp = headers['cf-connecting-ip'] || socket.handshake.address;
     console.warn(`[Security] Akses ditolak dari IP: ${clientIp} (Bukan pemilik bot / PIN tidak valid)`);
     return next(new Error('UNAUTHORIZED'));
 });
@@ -504,9 +570,12 @@ io.on('connection', (socket) => {
         sendMouseMove,
         sendMouseClick,
         forceScan: async () => {
+            if (isScanning) {
+                console.log('[Scan] Pemindaian sedang berjalan, permintaan force-scan dilewati');
+                return;
+            }
             console.log('Menerima perintah force-scan dari HP');
-            const found = await scanForTv();
-            if (found) connectToTv(8002);
+            await triggerAutoScan();
         }
     });
 });
