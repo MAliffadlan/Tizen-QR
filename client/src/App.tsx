@@ -500,6 +500,7 @@ const RemoteApp: React.FC = () => {
               <input
                 ref={inputRef}
                 type="text"
+                maxLength={2048}
                 className="keyboard-input"
                 placeholder={inputMode === 'instant' ? 'Mulai ketik...' : 'Cari YouTube, Netflix...'}
                 value={textInput}

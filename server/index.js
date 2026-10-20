@@ -6,8 +6,13 @@ const qrcode = require('qrcode');
 const { internalIpV4 } = require('internal-ip');
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
 const wol = require('wake_on_lan');
 const crypto = require('crypto');
+const { isValidKey, isValidText, isValidMouseMove, isValidMac } = require('./validation');
+const { registerSocketHandlers } = require('./handlers');
+const { createTokenStore } = require('./token-store');
+const { createTvMessageHandler } = require('./tv-message');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +25,13 @@ const TOKEN_FILE = path.join(__dirname, 'tv-token.txt');
 const CONFIG_FILE = path.join(__dirname, 'tv-config.json');
 const REMOTE_NAME = 'Alif_Remote_Super';
 const FIXED_ID = 'alif_super_id_001';
+
+const tokenStore = createTokenStore(TOKEN_FILE);
+const handleTvMessage = createTvMessageHandler({
+    getSavedToken: () => tokenStore.get(),
+    saveToken: (token) => tokenStore.save(token),
+    emitStatus: (status) => io.emit('tv-status', status)
+});
 
 // TV Configuration State
 let tvConfig = {
@@ -36,7 +48,11 @@ function loadTvConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
         try {
             const data = fs.readFileSync(CONFIG_FILE, 'utf8');
-            tvConfig = JSON.parse(data);
+            const parsed = JSON.parse(data);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                throw new Error('format config tidak valid');
+            }
+            tvConfig = parsed;
             console.log(`Loaded TV Config: ${tvConfig.name} (${tvConfig.ip})`);
             return true;
         } catch (e) {
@@ -48,13 +64,14 @@ function loadTvConfig() {
 
 function saveTvConfig(config) {
     tvConfig = { ...tvConfig, ...config };
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(tvConfig, null, 2));
+    try {
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(tvConfig, null, 2));
+    } catch (err) {
+        console.error('Gagal menyimpan config TV:', err.message);
+        return false;
+    }
     console.log(`TV Config saved: ${tvConfig.name} (${tvConfig.ip})`);
-}
-
-function getSavedToken() {
-    if (fs.existsSync(TOKEN_FILE)) return fs.readFileSync(TOKEN_FILE, 'utf8').trim();
-    return '';
+    return true;
 }
 
 // --- Auto Discovery & ARP Resolution ---
@@ -150,15 +167,16 @@ async function scanForTv() {
 
 // --- TV Connection ---
 function connectToTv(port = 8002) {
-    if (!tvConfig.ip) {
-        console.log('IP TV belum diset.');
+    if (typeof tvConfig.ip !== 'string' || net.isIP(tvConfig.ip) !== 4) {
+        console.log('IP TV belum diset atau tidak valid.');
+        io.emit('tv-status', 'Gagal: IP TV tidak valid');
         return;
     }
 
     if (tvWs && tvWs.readyState === WebSocket.OPEN) return;
 
     currentPort = port;
-    const token = getSavedToken();
+    const token = tokenStore.get();
     const encodedName = Buffer.from(REMOTE_NAME).toString('base64');
     
     const protocol = port === 8002 ? 'wss' : 'ws';
@@ -167,26 +185,25 @@ function connectToTv(port = 8002) {
     console.log(`\n--- MENCOBA KONEKSI KE TV (${tvConfig.ip}:${port}) ---`);
     io.emit('tv-status', `Menghubungkan ke ${tvConfig.name}...`);
     
-    tvWs = new WebSocket(wsUrl, { 
-        rejectUnauthorized: false,
-        handshakeTimeout: 5000 
-    });
+    try {
+        tvWs = new WebSocket(wsUrl, {
+            rejectUnauthorized: false,
+            handshakeTimeout: 5000,
+            maxPayload: 1024 * 1024,
+            perMessageDeflate: false
+        });
+    } catch (err) {
+        console.error('Gagal membuat koneksi WebSocket:', err.message);
+        io.emit('tv-status', 'Gagal terhubung ke TV');
+        return;
+    }
 
     tvWs.on('open', () => {
         console.log(`Handshake WebSocket Terbuka di Port ${port}!`);
         io.emit('tv-status', `Terhubung ke ${tvConfig.name}`);
     });
 
-    tvWs.on('message', (data) => {
-        const msg = JSON.parse(data.toString());
-        if (msg.event === 'ms.channel.connect') {
-            const newToken = msg.data.token;
-            if (newToken && newToken !== getSavedToken()) {
-                console.log('>>> TOKEN PERMANEN DIDAPAT:', newToken);
-                fs.writeFileSync(TOKEN_FILE, newToken);
-            }
-        }
-    });
+    tvWs.on('message', handleTvMessage);
 
     tvWs.on('close', () => {
         console.log(`Koneksi ke ${tvConfig.ip}:${port} terputus.`);
@@ -197,7 +214,13 @@ function connectToTv(port = 8002) {
         console.error(`Gagal konek ke ${tvConfig.ip}:${port}:`, err.message);
         if (port === 8002 && (err.message.includes('ECONNREFUSED') || err.message.includes('EHOSTUNREACH') || err.message.includes('ETIMEDOUT'))) {
             console.log('Mencoba fallback ke Port 8001...');
-            setTimeout(() => connectToTv(8001), 2000);
+            setTimeout(() => {
+                try {
+                    connectToTv(8001);
+                } catch (err) {
+                    console.error('Fallback koneksi gagal:', err.message);
+                }
+            }, 2000);
         } else if (port === 8001) {
             console.log('Kedua port gagal. Memulai pencarian TV otomatis di jaringan...');
             triggerAutoScan();
@@ -209,16 +232,28 @@ function connectToTv(port = 8002) {
 
 function sendWakeOnLan(mac) {
     if (!mac) return;
+    if (!isValidMac(mac)) {
+        console.warn('MAC TV tidak valid; WoL dilewati.');
+        return;
+    }
     console.log(`--- MENGIRIM MAGIC PACKET (WAKE-ON-LAN) KE ${mac} ---`);
-    wol.wake(mac, { address: '192.168.1.255', num_packets: 5, interval: 50 }, (err) => {
-        if (!err) console.log(`Magic Packet terkirim ke 192.168.1.255 (${mac})`);
-    });
-    wol.wake(mac, { address: '255.255.255.255', num_packets: 5, interval: 50 }, (err) => {
-        if (!err) console.log(`Magic Packet terkirim ke 255.255.255.255 (${mac})`);
-    });
+    try {
+        wol.wake(mac, { address: '192.168.1.255', num_packets: 5, interval: 50 }, (err) => {
+            if (!err) console.log(`Magic Packet terkirim ke 192.168.1.255 (${mac})`);
+            else console.error('WoL 192.168.1.255 gagal:', err.message);
+        });
+        wol.wake(mac, { address: '255.255.255.255', num_packets: 5, interval: 50 }, (err) => {
+            if (!err) console.log(`Magic Packet terkirim ke 255.255.255.255 (${mac})`);
+            else console.error('WoL 255.255.255.255 gagal:', err.message);
+        });
+    } catch (err) {
+        console.error('WoL gagal:', err.message);
+    }
 }
 
 function sendKey(key) {
+    if (!isValidKey(key)) return;
+
     if (key === 'KEY_POWER' && tvConfig.mac) {
         sendWakeOnLan(tvConfig.mac);
     }
@@ -239,7 +274,7 @@ function sendKey(key) {
         if (tvConfig.ip) {
             connectToTv(currentPort);
         } else {
-            scanAndConnect();
+            scanAndConnect().catch((err) => console.error('Gagal scan/connect:', err.message));
         }
         
         setTimeout(() => {
@@ -266,10 +301,21 @@ function doSendKey(key) {
         }
     };
     console.log(`Menembak: ${key}`);
-    tvWs.send(JSON.stringify(payload));
+    safeSend(payload);
+}
+
+function safeSend(payload) {
+    if (!tvWs || tvWs.readyState !== WebSocket.OPEN) return;
+    try {
+        tvWs.send(JSON.stringify(payload));
+    } catch (err) {
+        console.error('Gagal mengirim ke TV:', err.message);
+    }
 }
 
 function sendText(text) {
+    if (!isValidText(text)) return;
+
     if (!tvWs || tvWs.readyState !== WebSocket.OPEN) {
         console.log('Koneksi belum siap untuk kirim teks.');
         return;
@@ -286,10 +332,11 @@ function sendText(text) {
             TypeOfRemote: 'SendInputString'
         }
     };
-    tvWs.send(JSON.stringify(payload));
+    safeSend(payload);
 }
 
 function sendMouseMove(dx, dy) {
+    if (!isValidMouseMove({ dx, dy })) return;
     if (!tvWs || tvWs.readyState !== WebSocket.OPEN) return;
 
     const payload = {
@@ -304,7 +351,7 @@ function sendMouseMove(dx, dy) {
             TypeOfRemote: 'ProcessMouseDevice'
         }
     };
-    tvWs.send(JSON.stringify(payload));
+    safeSend(payload);
 }
 
 function sendMouseClick() {
@@ -318,7 +365,7 @@ function sendMouseClick() {
         }
     };
     console.log('Mouse: LeftClick');
-    tvWs.send(JSON.stringify(payload));
+    safeSend(payload);
 }
 
 async function scanAndConnect() {
@@ -424,20 +471,22 @@ io.on('connection', (socket) => {
         socket.emit('tv-status', 'Belum terhubung ke TV');
     }
     
-    socket.on('send-key', (key) => sendKey(key));
-    socket.on('send-text', (text) => sendText(text));
-    socket.on('mouse-move', (data) => sendMouseMove(data.dx, data.dy));
-    socket.on('mouse-click', () => sendMouseClick());
-    socket.on('force-scan', async () => {
-        console.log('Menerima perintah force-scan dari HP');
-        const found = await scanForTv();
-        if (found) connectToTv(8002);
+    registerSocketHandlers(socket, {
+        sendKey,
+        sendText,
+        sendMouseMove,
+        sendMouseClick,
+        forceScan: async () => {
+            console.log('Menerima perintah force-scan dari HP');
+            const found = await scanForTv();
+            if (found) connectToTv(8002);
+        }
     });
 });
 
 async function startServer() {
     // Start network scan and connect logic
-    scanAndConnect();
+    scanAndConnect().catch((err) => console.error('Gagal scan/connect:', err.message));
 
     // Serve static client built frontend
     const CLIENT_DIST = path.join(__dirname, '../client/dist');
@@ -451,4 +500,4 @@ async function startServer() {
     server.listen(PORT, '0.0.0.0');
 }
 
-startServer();
+startServer().catch((err) => console.error('Gagal memulai bridge:', err.message));
